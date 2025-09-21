@@ -1,0 +1,78 @@
+# Environment files with real secrets - NEVER commit these!
+.env.local
+.env.production
+.env.staging
+.env.secrets
+
+# Note: .env is now safe to commit (contains only placeholders)
+# Real secrets should be set as OS environment variables
+
+# API Keys and secrets
+secrets/
+*.key
+api_keys.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker
+.docker/
+
+# Data directories
+data/
+*.sqlite
+*.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Test results and outputs
+test_results.json
+test_output/
+
+# Claude Code settings
+.claude/
