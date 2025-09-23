@@ -110,6 +110,7 @@ cd chat-with-pdf
 2. **Start with Make**
 ```bash
 # Build and start all services
+# Note: it needs around 1 min to finish ingesting the pdf before start
 make start
 
 # shut down all services
