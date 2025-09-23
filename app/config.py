@@ -67,8 +67,8 @@ class Settings(BaseSettings):
     debug: bool = True
     log_level: str = "INFO"
     max_chunk_size: int = 1000
-    chunk_overlap: int = 200
-    max_retrieval_results: int = 5
+    chunk_overlap: int = 400
+    max_retrieval_results: int = 10
 
     class Config:
         env_file = ".env"
