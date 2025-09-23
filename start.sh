@@ -185,7 +185,7 @@ start_services() {
 wait_for_services() {
     print_status "Waiting for services to be ready..."
 
-    local max_attempts=30
+    local max_attempts=300
     local attempt=1
 
     while [ $attempt -le $max_attempts ]; do
