@@ -104,22 +104,9 @@ setup_api_keys() {
         print_success "Using existing Anthropic API key from environment"
     fi
 
-    # OpenAI API Key (Optional)
-    if [ -z "$OPENAI_API_KEY" ]; then
-        echo -e "\n${YELLOW}OpenAI API Key (Optional):${NC}"
-        read -p "Enter your OpenAI API key (or press Enter to skip): " openai_key
-
-        if [ ! -z "$openai_key" ]; then
-            export OPENAI_API_KEY="$openai_key"
-            print_success "OpenAI API key configured"
-        fi
-    else
-        print_success "Using existing OpenAI API key from environment"
-    fi
-
-    # Tavily API Key (Optional)
+    # Tavily API Key
     if [ -z "$TAVILY_API_KEY" ]; then
-        echo -e "\n${YELLOW}Tavily Web Search API Key (Optional):${NC}"
+        echo -e "\n${YELLOW}Tavily Web Search API Key:${NC}"
         echo "Get your API key from: https://tavily.com/"
         read -p "Enter your Tavily API key (or press Enter to skip): " tavily_key
 
