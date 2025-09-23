@@ -22,7 +22,7 @@ class EmbeddingProvider(ABC):
 
 
 class LocalEmbeddingProvider(EmbeddingProvider):
-    def __init__(self, model_name: str = "paraphrase-MiniLM-L6-v2"):  # Ultra-fast English model
+    def __init__(self, model_name: str = "all-mpnet-base-v2"):  # High-quality semantic understanding model
         if not SENTENCE_TRANSFORMERS_AVAILABLE:
             raise ImportError("sentence-transformers not available.")
 
@@ -37,8 +37,8 @@ class LocalEmbeddingProvider(EmbeddingProvider):
 
         self.model = SentenceTransformer(model_name, device=device)
 
-        # Optimize for speed
-        self.model.max_seq_length = 512  # Reduce max sequence length
+        # Optimize for quality vs speed balance
+        self.model.max_seq_length = 768  # Increased for better semantic understanding
 
         print(f"Initialized LocalEmbeddingProvider with {model_name} on {device}")
 

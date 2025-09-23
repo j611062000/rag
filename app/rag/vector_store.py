@@ -45,6 +45,7 @@ class ChromaVectorStore(VectorStore):
         )
         self.embedding_provider = get_embedding_provider()
 
+
     async def add_documents(self, texts: List[str], metadatas: List[Dict[str, Any]], ids: List[str]):
         # Process in batches for better memory management
         batch_size = 64
@@ -54,7 +55,7 @@ class ChromaVectorStore(VectorStore):
             batch_metadatas = metadatas[i:i+batch_size]
             batch_ids = ids[i:i+batch_size]
 
-            # Generate embeddings for this batch
+            # Generate embeddings directly from original texts
             embeddings = self.embedding_provider.embed_documents(batch_texts)
 
             self.collection.add(
@@ -65,6 +66,7 @@ class ChromaVectorStore(VectorStore):
             )
 
     async def search(self, query: str, k: int = 5) -> List[SearchResult]:
+        # Use raw query - let the better embedding model handle semantic understanding
         query_embedding = self.embedding_provider.embed_text(query)
 
         results = self.collection.query(
