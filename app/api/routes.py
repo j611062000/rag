@@ -6,12 +6,14 @@ from loguru import logger
 from app.graph.orchestrator import ChatOrchestrator
 from app.rag.ingestor import PDFIngestor
 from app.memory.session import SessionManager
+from app.rag.vector_store import get_vector_store
 
 router = APIRouter()
 
 orchestrator = ChatOrchestrator()
 ingestor = PDFIngestor()
 session_manager = SessionManager()
+vector_store = get_vector_store()
 
 
 class QuestionRequest(BaseModel):
@@ -42,7 +44,14 @@ async def ask_question(request: QuestionRequest) -> Dict[str, Any]:
             "answer": result.get("answer", ""),
             "sources": result.get("sources", []),
             "confidence": result.get("confidence", 0.0),
-            "session_id": request.session_id
+            "session_id": request.session_id,
+            "route_used": result.get("route_used", "unknown"),
+            "source_attribution": {
+                "used_pdf": result.get("used_pdf", False),
+                "used_web": result.get("used_web", False),
+                "pdf_confidence": result.get("pdf_confidence", 0.0),
+                "web_confidence": result.get("web_confidence", 0.0)
+            }
         }
     except Exception as e:
         logger.error(f"Error processing question: {str(e)}")
@@ -85,4 +94,18 @@ async def get_session_history(session_id: str) -> Dict[str, Any]:
         return {"session_id": session_id, "history": history}
     except Exception as e:
         logger.error(f"Error getting session history: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/documents")
+async def list_documents(limit: Optional[int] = 100) -> Dict[str, Any]:
+    try:
+        documents = await vector_store.list_documents(limit=limit)
+        return {
+            "documents": documents,
+            "total_count": len(documents),
+            "limit": limit
+        }
+    except Exception as e:
+        logger.error(f"Error listing documents from vector database: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

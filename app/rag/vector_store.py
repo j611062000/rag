@@ -6,6 +6,7 @@ import numpy as np
 import pickle
 import os
 from dataclasses import dataclass
+from loguru import logger
 
 from app.config import settings
 from app.rag.embeddings import get_embedding_provider
@@ -29,6 +30,10 @@ class VectorStore(ABC):
 
     @abstractmethod
     async def clear(self):
+        pass
+
+    @abstractmethod
+    async def list_documents(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         pass
 
 
@@ -81,6 +86,25 @@ class ChromaVectorStore(VectorStore):
             )
         except Exception:
             pass
+
+    async def list_documents(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        try:
+            result = self.collection.get(limit=limit)
+            documents = []
+
+            if result['documents']:
+                for i, doc in enumerate(result['documents']):
+                    documents.append({
+                        'id': result['ids'][i] if result['ids'] else f"doc_{i}",
+                        'content': doc,
+                        'metadata': result['metadatas'][i] if result['metadatas'] else {},
+                        'content_preview': doc[:200] + "..." if len(doc) > 200 else doc
+                    })
+
+            return documents
+        except Exception as e:
+            logger.error(f"Error listing documents from ChromaDB: {str(e)}")
+            return []
 
 
 class FAISSVectorStore(VectorStore):
@@ -151,6 +175,25 @@ class FAISSVectorStore(VectorStore):
         self.index = None
         self.documents = []
         self.metadatas = []
+
+    async def list_documents(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        documents = []
+        total_docs = len(self.documents)
+
+        if total_docs == 0:
+            return documents
+
+        end_idx = min(limit, total_docs) if limit else total_docs
+
+        for i in range(end_idx):
+            documents.append({
+                'id': f"faiss_{i}",
+                'content': self.documents[i],
+                'metadata': self.metadatas[i],
+                'content_preview': self.documents[i][:200] + "..." if len(self.documents[i]) > 200 else self.documents[i]
+            })
+
+        return documents
 
 
 def get_vector_store() -> VectorStore:

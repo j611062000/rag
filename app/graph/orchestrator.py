@@ -2,6 +2,7 @@ from typing import Dict, Any, List
 from dataclasses import dataclass
 from loguru import logger
 
+from app.agents.base import AgentResponse
 from app.agents.clarifier import ClarificationAgent
 from app.agents.router import RoutingAgent
 from app.agents.pdf_agent import PDFRAGAgent
@@ -17,7 +18,7 @@ class QueryState:
     context: str = ""
     is_clear: bool = True
     route: str = ""
-    pdf_result = None
+    pdf_result: AgentResponse = None
     web_result = None
     final_answer: str = ""
     sources: List[Dict[str, Any]] = None
@@ -77,16 +78,34 @@ class ChatOrchestrator:
                 "context": state.context
             })
 
-            state.route = routing_result.metadata.get("route", "pdf")
+            state.route = routing_result.metadata.get("route", "web")
             logger.info(f"Routing decision: {state.route}")
 
-            # Step 3: Information Retrieval
+            # Step 3: Information Retrieval with Fallback Logic
             if state.route == "pdf":
                 state.pdf_result = await self.pdf_agent.process({
                     "question": question,
                     "context": state.context
                 })
                 logger.info(f"PDF retrieval completed with confidence {state.pdf_result.confidence}")
+
+                # Fallback to web search if PDF results are insufficient
+                should_fallback = (
+                    state.pdf_result.confidence < 0.5 or
+                    state.pdf_result.metadata.get("retrieved_chunks", 0) == 0 or
+                    "I couldn't find any relevant information" in state.pdf_result.content or
+                    "don't contain enough information" in state.pdf_result.content
+                )
+
+                if should_fallback:
+                    logger.info(f"PDF results insufficient (confidence: {state.pdf_result.confidence}, chunks: {state.pdf_result.metadata.get('retrieved_chunks', 0)}), falling back to web search")
+                    state.web_result = await self.web_agent.process({
+                        "question": question,
+                        "context": state.context
+                    })
+                    logger.info(f"Web search fallback completed with confidence {state.web_result.confidence}")
+                    # Update route to indicate fallback occurred
+                    state.route = "pdf_with_web_fallback"
 
             elif state.route == "web":
                 state.web_result = await self.web_agent.process({
@@ -140,7 +159,11 @@ class ChatOrchestrator:
                 "sources": state.sources,
                 "confidence": state.confidence,
                 "route_used": state.route,
-                "needs_clarification": False
+                "needs_clarification": False,
+                "used_pdf": synthesis_result.metadata.get("used_pdf", False),
+                "used_web": synthesis_result.metadata.get("used_web", False),
+                "pdf_confidence": synthesis_result.metadata.get("pdf_confidence", 0.0),
+                "web_confidence": synthesis_result.metadata.get("web_confidence", 0.0)
             }
 
         except Exception as e:

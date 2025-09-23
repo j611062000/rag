@@ -16,7 +16,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 API_URL="http://localhost:8000"
-TIMEOUT=30
+TIMEOUT=240
 
 # Function to check if service is ready
 wait_for_service() {

@@ -47,16 +47,14 @@ Your response:
 
         content = response.content.strip()
 
-        if content.startswith("CLEAR:"):
-            is_clear = True
-            reason = content[6:].strip()
-        elif content.startswith("NEEDS_CLARIFICATION:"):
+       
+        if content.startswith("NEEDS_CLARIFICATION:"):
             is_clear = False
             reason = content[20:].strip()
+        
         else:
-            # Fallback: assume it needs clarification
-            is_clear = False
-            reason = "Question may need clarification for better results."
+            is_clear = True
+            reason = content[6:].strip()
 
         return AgentResponse(
             content=reason,

@@ -56,51 +56,25 @@ class LocalEmbeddingProvider(EmbeddingProvider):
         return embeddings.tolist()
 
 
-class MockEmbeddingProvider(EmbeddingProvider):
-    """Mock embedding provider for testing without API keys or heavy models"""
-
-    def __init__(self, dimension: int = 384):
-        self.dimension = dimension
-
-    def embed_text(self, text: str) -> List[float]:
-        # Generate deterministic "embedding" based on text hash
-        import hashlib
-        hash_bytes = hashlib.md5(text.encode()).digest()
-
-        # Convert hash to normalized vector
-        vector = []
-        for i in range(self.dimension):
-            # Use hash bytes cyclically to create vector
-            byte_val = hash_bytes[i % len(hash_bytes)]
-            normalized_val = (byte_val / 255.0) * 2 - 1  # Scale to [-1, 1]
-            vector.append(normalized_val)
-
-        # Normalize vector to unit length
-        magnitude = sum(x**2 for x in vector) ** 0.5
-        if magnitude > 0:
-            vector = [x / magnitude for x in vector]
-
-        return vector
-
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        return [self.embed_text(text) for text in texts]
 
 
 def get_embedding_provider() -> EmbeddingProvider:
-    # Use mock embeddings if no API key or in debug mode
-    use_mock = (
-        not settings.openai_api_key or
-        settings.debug or
-        not OPENAI_AVAILABLE or
-        not SENTENCE_TRANSFORMERS_AVAILABLE
-    )
+    # Priority: OpenAI API > Local embeddings > Error if neither available
 
-    if use_mock:
-        return MockEmbeddingProvider()
-    elif settings.openai_api_key and OPENAI_AVAILABLE:
-        return OpenAIEmbeddingProvider()
-    else:
+    # First try OpenAI if API key is available
+    if settings.openai_api_key and OPENAI_AVAILABLE:
+        try:
+            return OpenAIEmbeddingProvider()
+        except Exception as e:
+            print(f"OpenAI embeddings failed: {e}. Falling back to local embeddings.")
+
+    # Then try local embeddings with sentence transformers
+    if SENTENCE_TRANSFORMERS_AVAILABLE:
         try:
             return LocalEmbeddingProvider()
-        except ImportError:
-            return MockEmbeddingProvider()
+        except Exception as e:
+            print(f"Local embeddings failed: {e}.")
+            raise RuntimeError("No embedding provider available. Install sentence-transformers or provide OpenAI API key.")
+
+    # No fallback - require proper embedding provider
+    raise RuntimeError("No embedding provider available. Install sentence-transformers or provide OpenAI API key.")

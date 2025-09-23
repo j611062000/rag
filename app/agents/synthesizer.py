@@ -25,19 +25,23 @@ Web Search Result:
 
 Instructions:
 1. Synthesize information from both sources to provide a complete answer
-2. Clearly distinguish between information from academic papers vs. web sources
-3. Highlight any contradictions or different perspectives
-4. Provide citations for both types of sources
-5. If one source is unavailable or irrelevant, focus on the available source
+2. ALWAYS clearly indicate the source of information using these formats:
+   - "According to the PDF documents..." or "From the uploaded papers..."
+   - "Based on web search results..." or "From web sources..."
+3. Use clear attribution phrases like:
+   - "📄 **From PDF:** [information from documents]"
+   - "🌐 **From Web:** [information from web search]"
+4. Highlight any contradictions or different perspectives between sources
+5. Provide specific citations when available
 6. Give preference to academic sources for theoretical concepts
 7. Use web sources for current information, practical applications, or general context
 
-Provide a synthesized answer that leverages both sources effectively:
+Structure your response with clear source attribution throughout:
 """
         )
 
         self.single_source_prompt = PromptTemplate(
-            input_variables=["question", "context", "source_result", "source_type"],
+            input_variables=["question", "context", "source_result", "source_type", "source_icon"],
             template="""
 You are providing an answer based on {source_type} information.
 
@@ -49,7 +53,13 @@ User Question: {question}
 {source_type} Result:
 {source_result}
 
-Provide a clear, comprehensive answer based on the available {source_type} information:
+Instructions:
+1. ALWAYS start your response by clearly indicating the source
+2. Use the format: "{source_icon} **From {source_type}:** [your answer]"
+3. Be comprehensive but clearly attribute all information to the {source_type}
+4. Include specific citations when available
+
+Provide a clear, comprehensive answer with proper source attribution:
 """
         )
 
@@ -85,7 +95,8 @@ Provide a clear, comprehensive answer based on the available {source_type} infor
                 question=question,
                 context=context,
                 source_result=pdf_result.content,
-                source_type="PDF document"
+                source_type="PDF documents",
+                source_icon="📄"
             )
             sources = pdf_result.metadata.get("sources", []) if pdf_result.metadata else []
             confidence = pdf_result.confidence
@@ -96,7 +107,8 @@ Provide a clear, comprehensive answer based on the available {source_type} infor
                 question=question,
                 context=context,
                 source_result=web_result.content,
-                source_type="web search"
+                source_type="web search",
+                source_icon="🌐"
             )
             sources = web_result.metadata.get("sources", []) if web_result.metadata else []
             confidence = web_result.confidence

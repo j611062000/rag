@@ -27,17 +27,21 @@ Analyze the question and determine the best approach:
   * Technical concepts that would be in academic literature
   * Citations, authors, methodologies from papers
   * Specific results, experiments, or data from papers
+  * Questions that are likely to be answered by documents you've already ingested
 
 - Use "WEB" if the question is about:
   * Current events, news, recent developments
   * General knowledge not typically found in academic papers
   * Practical applications, tutorials, how-to guides
   * Company information, product details
+  * Questions clearly outside the scope of academic PDFs
 
 - Use "BOTH" if the question requires:
   * Comparing academic findings with current information
   * Contextualizing research within current trends
   * Both theoretical background and practical applications
+
+Note: If PDF search doesn't find sufficient information (low confidence), the system will automatically fallback to web search, so prefer PDF when in doubt for academic questions.
 
 Respond with exactly one of:
 - "PDF: <reason for using PDF search>"
