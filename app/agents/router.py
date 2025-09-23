@@ -2,6 +2,7 @@ from typing import Dict, Any
 from langchain.prompts import PromptTemplate
 
 from app.agents.base import BaseAgent, AgentResponse
+from app.rag.query_pipeline import get_advanced_pdf_agent
 
 
 class RoutingAgent(BaseAgent):

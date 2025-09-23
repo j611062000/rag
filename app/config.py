@@ -66,8 +66,8 @@ class Settings(BaseSettings):
     # Application Settings
     debug: bool = True
     log_level: str = "INFO"
-    max_chunk_size: int = 1000
-    chunk_overlap: int = 400
+    max_chunk_size: int = 800  # Reduced to stay well within 512 token limit
+    chunk_overlap: int = 240   # 30% overlap
     max_retrieval_results: int = 10
 
     class Config:

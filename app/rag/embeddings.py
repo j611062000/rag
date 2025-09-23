@@ -37,8 +37,8 @@ class LocalEmbeddingProvider(EmbeddingProvider):
 
         self.model = SentenceTransformer(model_name, device=device)
 
-        # Optimize for quality vs speed balance
-        self.model.max_seq_length = 768  # Increased for better semantic understanding
+        # Set to model's actual maximum (all-mpnet-base-v2 supports up to 514 tokens)
+        self.model.max_seq_length = 512  # Safe limit to avoid position embedding errors
 
         print(f"Initialized LocalEmbeddingProvider with {model_name} on {device}")
 

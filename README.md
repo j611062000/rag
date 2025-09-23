@@ -1,153 +1,287 @@
-📚 Chat-with-PDF Backend (Generative AI Assignment)
+# 📚 Chat-with-PDF Backend
 
-Overview
+## Overview
 
-This project implements a backend system for intelligent Q&A over academic PDFs, with the ability to fall back on web search when answers are not found in the documents.
+This project implements an intelligent Q&A system for academic PDFs using advanced Retrieval-Augmented Generation (RAG) techniques. The system features a multi-agent architecture that provides contextual answers from PDF documents with automatic fallback to web search when needed.
 
-The system is built with a multi-agent architecture (via LangGraph), using Retrieval-Augmented Generation (RAG) to ground answers in the provided corpus.
-
-⸻
-
-✨ Features
-	•	Question Answering over PDFs using embeddings + vector store
-	•	Autonomous Multi-Agent Orchestration with LangGraph (clarification, routing, retrieval, synthesis)
-	•	Web Search Integration (Tavily / DuckDuckGo / SerpAPI)
-	•	Session-based Memory for contextual follow-ups
-	•	REST API endpoints:
-	•	POST /ask – ask a question
-	•	POST /clear – clear session memory
-	•	POST /ingest – ingest PDF papers
+Built with cutting-edge open source libraries including **Unstructured.io** for advanced PDF parsing, **LlamaIndex** for sophisticated query processing, and **semantic chunking** for better context preservation.
 
 ⸻
 
-🏗️ High-Level Architecture
+## 🏗️ Architecture Overview
 
-flowchart LR
-    User[Client/CLI] --> API[FastAPI Service]
+```mermaid
+graph TB
+    User[👤 User] --> API[🚀 FastAPI Backend]
 
-    subgraph API
-      Router[Routing Agent]
-      Clarifier[Clarification Agent]
-      PDFAgent[PDF RAG Agent]
-      WebAgent[Web Search Agent]
-      Synth[Answer Synthesizer]
-      Memory[Session Memory]
+    subgraph "Multi-Agent System"
+        Clarifier[🔍 Clarification Agent<br/>Context combination & validation]
+        Router[🧭 Routing Agent<br/>PDF vs Web decision]
+        PDFAgent[📄 Advanced PDF Agent<br/>LlamaIndex Query Pipeline]
+        WebAgent[🌐 Web Search Agent<br/>Tavily/DuckDuckGo integration]
+        Synthesizer[⚡ Answer Synthesizer<br/>Result combination & grounding]
     end
 
-    PDFAgent -->|retrieves| VS[(Vector Store)]
-    PDFAgent -->|calls| LLM[LLM Provider]
-    WebAgent --> Search[Search API]
-    Synth --> LLM
-    Synth --> Memory
+    subgraph "Advanced Processing"
+        Parser[📊 Advanced Parser<br/>Unstructured.io + tables]
+        Chunker[🧩 Semantic Chunker<br/>Context-aware boundaries]
+        Embeddings[🔗 all-mpnet-base-v2<br/>High-quality embeddings]
+    end
 
-Flow
-	1.	User sends a query via /ask.
-	2.	Clarification Agent checks if the query is vague.
-	3.	Routing Agent decides whether to use PDF retrieval or web search.
-	4.	PDF RAG Agent queries the vector DB and synthesizes answers with the LLM.
-	5.	Web Search Agent retrieves external information when needed.
-	6.	Answer Synthesizer combines results and responds.
-	7.	Session Memory stores context for follow-up questions.
+    subgraph "Storage Layer"
+        ChromaDB[(🗄️ ChromaDB<br/>Vector Storage)]
+        Redis[(⚡ Redis<br/>Session Memory)]
+    end
+
+    API --> Clarifier
+    Clarifier --> Router
+    Router --> PDFAgent
+    Router --> WebAgent
+    PDFAgent --> Synthesizer
+    WebAgent --> Synthesizer
+
+    Parser --> Chunker
+    Chunker --> Embeddings
+    Embeddings --> ChromaDB
+
+    PDFAgent --> ChromaDB
+    Synthesizer --> Redis
+```
+
+### Agent Descriptions
+
+- **🔍 Clarification Agent**: Combines incomplete questions with conversation context and determines if clarification is needed
+- **🧭 Routing Agent**: Intelligently decides between PDF search, web search, or both based on question type
+- **📄 Advanced PDF Agent**: Uses LlamaIndex Query Pipeline with multi-query retrieval and sophisticated result synthesis
+- **🌐 Web Search Agent**: Integrates multiple search providers with quality filtering and result processing
+- **⚡ Answer Synthesizer**: Combines PDF and web results with confidence scoring and source attribution
+
+### Processing Flow
+
+1. **Question Analysis**: Clarification agent processes user input and context
+2. **Intelligent Routing**: Router determines optimal search strategy
+3. **Advanced Retrieval**: PDF agent uses semantic search with query enhancement
+4. **Fallback Logic**: Automatic web search if PDF confidence < threshold
+5. **Result Synthesis**: Combine sources with confidence scoring and citations
+6. **Context Storage**: Session memory enables follow-up conversations
 
 ⸻
 
-🛠️ Tech Stack
-	•	Language: Python 3.11+
-	•	Framework: FastAPI
-	•	LLM Orchestration: LangGraph (preferred), LangChain as helper
-	•	RAG Components:
-	•	Vector DB: ChromaDB (default), switchable to FAISS/PGVector
-	•	Embeddings: OpenAI text-embedding-3-large or local models (e.g., bge-large)
-	•	PDF Parsing: pypdf, pdfminer.six
-	•	LLM Providers: OpenAI / Anthropic / Azure OpenAI (configurable)
-	•	Web Search: Tavily API (recommended), DuckDuckGo, SerpAPI
-	•	Memory: Redis (session storage, caching)
-	•	Containerization: Docker + docker-compose
-	•	Logging/Tracing: loguru + OpenTelemetry + Prometheus metrics
+## 🛠️ Tech Stack
+
+### Core Framework
+- **Python 3.11+** - Modern Python with async/await support
+- **FastAPI** - High-performance async web framework
+- **Docker** - Containerization with multi-service orchestration
+
+### Advanced RAG Components
+- **🔧 Unstructured.io** - Advanced PDF parsing with table/figure extraction
+- **🧠 LlamaIndex** - Sophisticated query processing pipeline
+- **🎯 Semantic Chunking** - Context-aware document segmentation
+- **📊 all-mpnet-base-v2** - High-quality sentence embeddings
+
+### Infrastructure
+- **ChromaDB** - Vector database for document storage
+- **Redis** - Session memory and caching
+- **LangChain** - Multi-query retrieval and agent orchestration
+
+### LLM & Search
+- **OpenAI / Anthropic** - Configurable LLM providers
+- **Tavily API** - Professional web search with quality filtering
+- **DuckDuckGo** - Fallback search provider
 
 ⸻
 
-🚀 Getting Started
+## 🚀 How to Run Locally
 
-1. Clone the Repository
+### Prerequisites
+- Docker and docker-compose installed
+- Make utility (available on most Unix systems)
+- API keys for LLM providers, here I'm using Anthropic
+- Tavily API key for enhanced web search
 
-git clone https://github.com/${account}/chat-with-pdf.git
+### Quick Start
+
+1. **Clone the Repository**
+```bash
+git clone <repository-url>
 cd chat-with-pdf
+```
 
-2. Environment Setup
+2. **Start with Make**
 
-Create a .env file:
+```bash
+# Build and start all services
+make start
 
-LLM_PROVIDER=openai
-LLM_MODEL=gpt-4o-mini
-OPENAI_API_KEY=your_api_key_here
-
-VECTOR_DB=chroma
-REDIS_URL=redis://redis:6379
-
-SEARCH_PROVIDER=tavily
-TAVILY_API_KEY=your_tavily_key
-
-3. Run with Docker
-
-docker-compose up --build
+# shut down all services
+make stop
+```
 
 This starts:
-	•	api (FastAPI service)
-	•	vector-db (ChromaDB)
-	•	redis (session + cache)
+- **Backend API** (Port 8000) - FastAPI service with all agents
+- **ChromaDB** (Port 8001) - Vector database for document storage
+- **Redis** (Port 6379) - Session memory and caching
 
-4. API Endpoints
-	•	POST /ingest → ingest PDFs
-	•	POST /ask → ask a question
-	•	POST /clear → clear session
+3. **Verify Installation**
 
-Example request:
 
-curl -X POST http://localhost:8000/ask \
+Access interactive API docs:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+### API Endpoints
+
+#### Document Management
+```bash
+# Upload PDF document
+curl -X POST "http://localhost:8000/ingest" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@your_document.pdf"
+
+# List uploaded documents
+curl "http://localhost:8000/documents"
+```
+
+#### Question Answering
+```bash
+# Ask a question
+curl -X POST "http://localhost:8000/ask" \
   -H "Content-Type: application/json" \
-  -d '{"question": "What accuracy did davinci-codex achieve on Spider?"}'
+  -d '{
+    "question": "Which prompt template gave the highest zero-shot accuracy on Spider in Zhang et al. (2024)?",
+    "session_id": "demo_session"
+  }'
+```
+
+#### Session Management
+```bash
+# Get conversation history
+curl "http://localhost:8000/sessions/demo_session/history"
+
+# Clear session memory
+curl -X POST "http://localhost:8000/clear" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "demo_session"}'
+```
+
+⸻
+
+## 📦 Project Structure
+
+```
+chat-with-pdf/
+├── app/
+│   ├── agents/                 # Multi-agent system
+│   │   ├── base.py            # Base agent interface
+│   │   ├── clarifier.py       # Question clarification & context combination
+│   │   ├── router.py          # PDF vs Web routing decisions
+│   │   ├── pdf_agent.py       # Multi-query RAG with confidence scoring
+│   │   ├── web_agent.py       # Web search integration
+│   │   └── synthesizer.py     # Result combination & synthesis
+│   │
+│   ├── rag/                   # Advanced RAG components
+│   │   ├── advanced_parser.py # Unstructured.io PDF parsing
+│   │   ├── semantic_chunker.py # Context-aware document segmentation
+│   │   ├── query_pipeline.py  # LlamaIndex sophisticated query processing
+│   │   ├── embeddings.py      # all-mpnet-base-v2 embedding provider
+│   │   ├── vector_store.py    # ChromaDB interface with retriever
+│   │   ├── ingestor.py        # Document ingestion orchestrator
+│   │   └── chunker.py         # Fallback recursive chunking
+│   │
+│   ├── graph/                 # System orchestration
+│   │   └── orchestrator.py    # Main multi-agent coordinator
+│   │
+│   ├── api/                   # FastAPI endpoints
+│   │   └── routes.py          # REST API routes
+│   │
+│   ├── memory/                # Session management
+│   │   └── session.py         # Redis-based conversation memory
+│   │
+│   ├── search/                # Web search providers
+│   │   ├── tavily_search.py   # Professional search API
+│   │   └── duckduckgo_search.py # Fallback search
+│   │
+│   ├── config.py              # Configuration management
+│   ├── startup.py             # Application initialization
+│   └── main.py                # FastAPI application entry point
+│
+├── docker/
+│   ├── Dockerfile             # Multi-stage Python container
+│   └── docker-compose.yml     # Multi-service orchestration
+│
+├── Makefile                   # Development workflow automation
+│
+├── scripts/
+│   └── ingest_pdfs.py         # Bulk PDF ingestion utility
+│
+├── tests/
+│   └── e2e_test.py            # End-to-end testing
+│
+├── requirements.txt           # Python dependencies with advanced libraries
+└── README.md                  # This documentation
+```
+
+### Key Components
+
+- **Advanced Processing**: Unstructured.io + semantic chunking + LlamaIndex
+- **Multi-Agent System**: Clarification → Routing → Retrieval → Synthesis
+- **Fallback Architecture**: PDF → Web search → Error handling at every level
+- **Session Memory**: Contextual conversations with Redis persistence
+- **Production Ready**: Docker containerization with health checks
 
 
 ⸻
 
-📦 Project Structure
+## 🔮 Future Improvements
 
-repo/
-├─ app/
-│  ├─ api/          # FastAPI routes
-│  ├─ agents/       # Clarify, Router, RAG, Web, Synth
-│  ├─ graph/        # LangGraph orchestration
-│  ├─ rag/          # retrievers, chunkers, embeddings
-│  ├─ memory/       # Redis session memory
-│  ├─ search/       # Web search integrations
-│  ├─ config.py
-│  └─ main.py
-├─ scripts/
-│  └─ ingest_pdfs.py
-├─ docker/
-│  ├─ Dockerfile
-│  └─ docker-compose.yml
-├─ tests/
-│  └─ e2e_test.py
-└─ README.md
+### Immediate Enhancements
+- **🎯 BGE Reranker Integration**: Add cross-encoder reranking for higher precision retrieval
+- **🔄 Streaming Responses**: Real-time answer streaming for better user experience
+- **📈 Advanced Evaluation**: Implement RAGAS framework for comprehensive quality assessment
 
+### Advanced Features
+- **🧪 Query Analysis**: Add query classification (factual, analytical, comparative)
+- **📍 Citation Highlighting**: Precise page/section references with coordinate mapping
+- **🔗 Multi-Document Reasoning**: Cross-reference insights across multiple papers
 
-⸻
+### Scaling & Production
+- **☁️ Cloud-Native Deployment**: Kubernetes with auto-scaling and load balancing
+- **🗄️ Vector Database Migration**: Qdrant or Weaviate for production-scale performance
+- **🔐 Multi-Tenancy**: User isolation with workspace-based document management
+- **📊 Advanced Analytics**: User interaction tracking and system performance metrics
+- **🔍 A/B Testing Framework**: Continuous improvement through experimentation
 
-🔮 Future Improvements
-	•	Add evaluation system (golden Q&A pairs, confidence scoring)
-	•	Use hybrid retrieval (BM25 + dense embeddings + cross-encoder reranker)
-	•	Improve citation grounding (highlight page spans)
-	•	Add streaming API for /ask
-	•	Deploy at scale: load balancing, autoscaling, multi-tenant vector DB
+### Quality & Reliability
+- **🎯 Golden Q&A Dataset**: Curated evaluation pairs for consistent quality measurement
+- **🛡️ Hallucination Detection**: Advanced consistency checking and source grounding
+- **⚡ Performance Optimization**: Response caching and smart prefetching
+- **🔄 Continuous Learning**: User feedback integration for model improvement
 
-⸻
+---
 
-✅ Deliverable Checklist
-	•	Running container (docker-compose up)
-	•	End-to-end pipeline: ingest PDF → ask → answer → clear memory
-	•	Modular agent design with LangGraph
-	•	README with architecture, run steps, improvements
+## 📋 Development Checklist
 
-⸻
+### ✅ Core Implementation
+- [x] Multi-agent architecture with intelligent routing
+- [x] Advanced PDF parsing with Unstructured.io
+- [x] Semantic chunking for context preservation
+- [x] LlamaIndex query pipeline integration
+- [x] Session-based conversation memory
+- [x] Automatic fallback mechanisms
+- [x] Docker containerization
+
+### ✅ Production Ready
+- [x] Comprehensive error handling
+- [x] Health checks and monitoring
+- [x] API documentation (OpenAPI/Swagger)
+- [x] Environment configuration management
+- [x] Multi-service orchestration
+
+### ✅ Documentation
+- [x] Architecture overview with diagrams
+- [x] Complete setup instructions
+- [x] API usage examples
+- [x] Future improvement roadmap
+
+---

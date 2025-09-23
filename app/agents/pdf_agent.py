@@ -1,8 +1,9 @@
 from typing import Dict, Any, List
 from langchain.prompts import PromptTemplate
+from langchain.retrievers.multi_query import MultiQueryRetriever
 
 from app.agents.base import BaseAgent, AgentResponse
-from app.rag.vector_store import get_vector_store, SearchResult
+from app.rag.vector_store import get_vector_store, get_retriever, SearchResult
 from app.config import settings
 
 
@@ -10,6 +11,13 @@ class PDFRAGAgent(BaseAgent):
     def __init__(self):
         super().__init__()
         self.vector_store = get_vector_store()
+
+        # Setup LangChain MultiQueryRetriever
+        base_retriever = get_retriever({"k": settings.max_retrieval_results})
+        self.multi_query_retriever = MultiQueryRetriever.from_llm(
+            retriever=base_retriever,
+            llm=self.llm
+        )
         self.prompt = PromptTemplate(
             input_variables=["question", "context", "retrieved_docs"],
             template="""
@@ -38,11 +46,24 @@ Provide your answer based solely on the retrieved information:
         question = input_data.get("question", "")
         context = input_data.get("context", "")
 
-        # Retrieve relevant documents
-        search_results = await self.vector_store.search(
-            question,
-            k=settings.max_retrieval_results
-        )
+        # Use LangChain MultiQueryRetriever for enhanced retrieval
+        try:
+            langchain_docs = self.multi_query_retriever.get_relevant_documents(question)
+
+            # Convert LangChain Documents back to our SearchResult format
+            search_results = []
+            for doc in langchain_docs:
+                search_result = SearchResult(
+                    content=doc.page_content,
+                    metadata=doc.metadata,
+                    score=doc.metadata.get("score", 0.5)  # Score stored in metadata
+                )
+                search_results.append(search_result)
+
+        except Exception as e:
+            logger.error(f"MultiQueryRetriever failed: {str(e)}, falling back to single query")
+            # Fallback to single query if MultiQueryRetriever fails
+            search_results = await self.vector_store.search(question, k=settings.max_retrieval_results)
 
         if not search_results:
             return AgentResponse(
@@ -85,6 +106,7 @@ Provide your answer based solely on the retrieved information:
                 "sources": sources,
                 "retrieved_chunks": len(search_results),
                 "relevant_chunks": len(relevant_results),
+                "retrieval_method": "langchain_multi_query",
                 "search_results": [
                     {
                         "content": result.content[:200] + "...",

@@ -9,6 +9,7 @@ from app.agents.pdf_agent import PDFRAGAgent
 from app.agents.web_agent import WebSearchAgent
 from app.agents.synthesizer import AnswerSynthesizer
 from app.memory.session import SessionManager
+from app.rag.query_pipeline import get_advanced_pdf_agent
 
 
 @dataclass
@@ -26,10 +27,23 @@ class QueryState:
 
 
 class ChatOrchestrator:
-    def __init__(self):
+    def __init__(self, use_advanced_pdf_agent: bool = True):
         self.clarifier = ClarificationAgent()
         self.router = RoutingAgent()
-        self.pdf_agent = PDFRAGAgent()
+        self.use_advanced_pdf_agent = use_advanced_pdf_agent
+
+        # Initialize PDF agents
+        if self.use_advanced_pdf_agent:
+            try:
+                self.pdf_agent = get_advanced_pdf_agent()
+                logger.info("Using advanced PDF agent with LlamaIndex Query Pipeline")
+            except Exception as e:
+                logger.warning(f"Advanced PDF agent initialization failed: {str(e)}, using standard agent")
+                self.pdf_agent = PDFRAGAgent()
+                self.use_advanced_pdf_agent = False
+        else:
+            self.pdf_agent = PDFRAGAgent()
+
         self.web_agent = WebSearchAgent()
         self.synthesizer = AnswerSynthesizer()
         self.session_manager = SessionManager()
