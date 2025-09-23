@@ -51,6 +51,132 @@
             margin-top: 5px;
         }
 
+        .control-panel {
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .control-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .control-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #475569;
+        }
+
+        .session-display {
+            font-family: 'Fira Code', 'Source Code Pro', monospace;
+            font-size: 13px;
+            background: #f1f5f9;
+            padding: 6px 10px;
+            border-radius: 8px;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .session-display span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .session-display span.copied {
+            color: #16a34a;
+        }
+
+        .control-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-button {
+            padding: 8px 14px;
+            border-radius: 999px;
+            border: 1px solid #cbd5f5;
+            background: white;
+            color: #4f46e5;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .control-button:hover:not(:disabled) {
+            background: #eef2ff;
+        }
+
+        .control-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .control-button.primary {
+            background: linear-gradient(90deg, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+        }
+
+        .control-button.primary:hover:not(:disabled) {
+            filter: brightness(1.05);
+        }
+
+        .control-button.danger {
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+
+        .control-button.danger:hover:not(:disabled) {
+            background: #fecaca;
+        }
+
+        .file-name {
+            font-size: 12px;
+            color: #475569;
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .control-status {
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .control-status.success {
+            color: #15803d;
+        }
+
+        .control-status.error {
+            color: #b91c1c;
+        }
+
         .chat-container {
             flex: 1;
             display: flex;
@@ -331,6 +457,40 @@
             <p>AI-powered document Q&A with multi-agent RAG system</p>
         </div>
 
+        <div class="control-panel">
+            <div class="control-grid">
+                <div class="control-card">
+                    <div class="control-title">Session</div>
+                    <div class="session-display" title="Current session identifier">
+                        <span id="sessionIdValue">session-0000</span>
+                        <button class="control-button" onclick="copySessionId()">Copy</button>
+                    </div>
+                    <div class="control-actions">
+                        <button class="control-button" onclick="resetSession()">New Session</button>
+                    </div>
+                </div>
+
+                <div class="control-card">
+                    <div class="control-title">Ingest PDF</div>
+                    <div class="control-actions">
+                        <input type="file" id="pdfInput" accept="application/pdf" style="display:none" onchange="handleFileSelection(event)">
+                        <button class="control-button" onclick="document.getElementById('pdfInput').click()">Choose PDF</button>
+                        <span class="file-name" id="selectedFileName">No file chosen</span>
+                        <button class="control-button primary" id="ingestButton" onclick="ingestPdf()">Ingest</button>
+                    </div>
+                    <div class="control-status" id="ingestStatus"></div>
+                </div>
+
+                <div class="control-card">
+                    <div class="control-title">Memory</div>
+                    <div class="control-actions">
+                        <button class="control-button danger" id="clearButton" onclick="clearSession()">Clear Session</button>
+                    </div>
+                    <div class="control-status" id="clearStatus"></div>
+                </div>
+            </div>
+        </div>
+
         <div class="chat-container">
             <div class="messages" id="messages">
                 <div class="message assistant">
@@ -368,7 +528,14 @@
 
     <script>
         const API_BASE = '/api';
+        const SESSION_STORAGE_KEY = 'chat-with-pdf-session-id';
         let isLoading = false;
+        let selectedFile = null;
+        let isIngesting = false;
+        let isClearing = false;
+        let sessionId = loadSessionId();
+
+        updateSessionUI(sessionId);
 
         // Check system health on load
         async function checkHealth() {
@@ -379,7 +546,7 @@
                 const statusEl = document.getElementById('status');
                 if (data.status === 'healthy') {
                     statusEl.className = 'status healthy';
-                    statusEl.innerHTML = '✅ System ready - PDFs loaded and AI connected';
+                    statusEl.innerHTML = `✅ System ready – Session: <strong>${sessionId}</strong>`;
                 } else {
                     statusEl.className = 'status error';
                     statusEl.innerHTML = '⚠️ System partially ready - some services may be unavailable';
@@ -413,10 +580,16 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ question: message })
+                    body: JSON.stringify({ question: message, session_id: sessionId })
                 });
 
                 const data = await response.json();
+
+                if (data.session_id && data.session_id !== sessionId) {
+                    sessionId = data.session_id;
+                    persistSessionId(sessionId);
+                    updateSessionUI(sessionId);
+                }
 
                 // Remove loading message
                 loadingMsg.remove();
@@ -434,6 +607,147 @@
             document.getElementById('sendButton').disabled = false;
         }
 
+        function loadSessionId() {
+            let stored = localStorage.getItem(SESSION_STORAGE_KEY);
+            if (!stored) {
+                stored = generateSessionId();
+                localStorage.setItem(SESSION_STORAGE_KEY, stored);
+            }
+            return stored;
+        }
+
+        function persistSessionId(id) {
+            localStorage.setItem(SESSION_STORAGE_KEY, id);
+        }
+
+        function generateSessionId() {
+            if (window.crypto && window.crypto.randomUUID) {
+                return `session-${window.crypto.randomUUID()}`;
+            }
+            return `session-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        }
+
+        function updateSessionUI(id) {
+            const display = document.getElementById('sessionIdValue');
+            if (display) {
+                display.textContent = id;
+            }
+            const statusEl = document.getElementById('status');
+            if (statusEl && statusEl.classList.contains('healthy')) {
+                statusEl.innerHTML = `✅ System ready – Session: <strong>${id}</strong>`;
+            }
+        }
+
+        async function ingestPdf() {
+            const statusEl = document.getElementById('ingestStatus');
+            const button = document.getElementById('ingestButton');
+            if (!selectedFile || isIngesting) {
+                statusEl.textContent = 'Select a PDF before ingesting.';
+                statusEl.className = 'control-status error';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                isIngesting = true;
+                button.disabled = true;
+                statusEl.textContent = 'Uploading and indexing PDF...';
+                statusEl.className = 'control-status';
+
+                const response = await fetch(`${API_BASE}/ingest`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Ingestion failed');
+                }
+
+                const data = await response.json();
+                statusEl.textContent = `✅ ${data.message} (chunks: ${data.chunks_created})`;
+                statusEl.className = 'control-status success';
+                addMessage(`📥 ${data.message}. Ready to query the new content.`, 'assistant');
+                selectedFile = null;
+                document.getElementById('pdfInput').value = '';
+                document.getElementById('selectedFileName').textContent = 'No file chosen';
+            } catch (error) {
+                statusEl.textContent = `❌ ${error.message}`;
+                statusEl.className = 'control-status error';
+            } finally {
+                isIngesting = false;
+                button.disabled = false;
+            }
+        }
+
+        async function clearSession() {
+            const statusEl = document.getElementById('clearStatus');
+            const button = document.getElementById('clearButton');
+            if (isClearing) return;
+
+            try {
+                isClearing = true;
+                button.disabled = true;
+                statusEl.textContent = 'Clearing session memory...';
+                statusEl.className = 'control-status';
+
+                const response = await fetch(`${API_BASE}/clear`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Failed to clear session');
+                }
+
+                const data = await response.json();
+                statusEl.textContent = `✅ ${data.message}`;
+                statusEl.className = 'control-status success';
+                addMessage('🧹 Session memory cleared. Start fresh with your next question.', 'assistant');
+            } catch (error) {
+                statusEl.textContent = `❌ ${error.message}`;
+                statusEl.className = 'control-status error';
+            } finally {
+                isClearing = false;
+                button.disabled = false;
+            }
+        }
+
+        function handleFileSelection(event) {
+            const files = event.target.files;
+            const nameEl = document.getElementById('selectedFileName');
+            if (files && files[0]) {
+                selectedFile = files[0];
+                nameEl.textContent = selectedFile.name;
+            } else {
+                selectedFile = null;
+                nameEl.textContent = 'No file chosen';
+            }
+        }
+
+        function copySessionId() {
+            if (navigator.clipboard && sessionId) {
+                navigator.clipboard.writeText(sessionId);
+                const display = document.getElementById('sessionIdValue');
+                display.classList.add('copied');
+                setTimeout(() => display.classList.remove('copied'), 600);
+            } else {
+                window.prompt('Copy session id to clipboard:', sessionId);
+            }
+        }
+
+        function resetSession() {
+            sessionId = generateSessionId();
+            persistSessionId(sessionId);
+            updateSessionUI(sessionId);
+            addMessage(`🔄 Started a new session (${sessionId}).`, 'assistant');
+        }
         // Add message to chat
         function addMessage(content, sender, isLoading = false) {
             const messagesContainer = document.getElementById('messages');

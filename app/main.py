@@ -5,6 +5,8 @@ from typing import Dict, Any, Optional
 import uvicorn
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
+import json
 from loguru import logger
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -27,6 +29,17 @@ class ClearRequest(BaseModel):
     session_id: Optional[str] = "default"
 
 
+OPENAPI_EXPORT_PATH = Path("openapi/openapi.json")
+
+
+def _export_openapi_schema(app: FastAPI, output_path: Path = OPENAPI_EXPORT_PATH) -> None:
+    """Persist the generated OpenAPI schema so developers can explore it offline."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    schema = app.openapi()
+    output_path.write_text(json.dumps(schema, indent=2))
+    logger.info(f"📄 OpenAPI schema exported to {output_path.resolve()}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -37,6 +50,12 @@ async def lifespan(app: FastAPI):
         await run_startup_ingestion()
     except Exception as e:
         logger.error(f"Startup ingestion failed: {str(e)}")
+
+    try:
+        _export_openapi_schema(app)
+        logger.info("🧪 Explore the API via Swagger UI at http://localhost:8000/docs or Redoc at http://localhost:8000/redoc")
+    except Exception as e:
+        logger.error(f"Failed to export OpenAPI schema: {str(e)}")
 
     logger.info("✅ Application ready to serve requests")
     yield
