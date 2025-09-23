@@ -27,7 +27,7 @@ class DocumentChunker:
     def chunk_document(self, text: str, metadata: Dict[str, Any]) -> List[DocumentChunk]:
         chunks = self.splitter.split_text(text)
 
-        document_chunks = []
+        document_chunks: List[DocumentChunk] = []
         for i, chunk in enumerate(chunks):
             chunk_metadata = {
                 **metadata,

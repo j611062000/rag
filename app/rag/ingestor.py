@@ -1,7 +1,6 @@
 import hashlib
-from typing import Dict, Any, List
+from typing import Dict, Any
 from io import BytesIO
-import uuid
 
 from pypdf import PdfReader
 from loguru import logger

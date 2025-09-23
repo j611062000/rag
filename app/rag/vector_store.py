@@ -1,10 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 import chromadb
-import faiss
-import numpy as np
-import pickle
-import os
 from dataclasses import dataclass
 from loguru import logger
 
@@ -50,14 +46,23 @@ class ChromaVectorStore(VectorStore):
         self.embedding_provider = get_embedding_provider()
 
     async def add_documents(self, texts: List[str], metadatas: List[Dict[str, Any]], ids: List[str]):
-        embeddings = self.embedding_provider.embed_documents(texts)
+        # Process in batches for better memory management
+        batch_size = 64
 
-        self.collection.add(
-            documents=texts,
-            embeddings=embeddings,
-            metadatas=metadatas,
-            ids=ids
-        )
+        for i in range(0, len(texts), batch_size):
+            batch_texts = texts[i:i+batch_size]
+            batch_metadatas = metadatas[i:i+batch_size]
+            batch_ids = ids[i:i+batch_size]
+
+            # Generate embeddings for this batch
+            embeddings = self.embedding_provider.embed_documents(batch_texts)
+
+            self.collection.add(
+                documents=batch_texts,
+                embeddings=embeddings,
+                metadatas=batch_metadatas,
+                ids=batch_ids
+            )
 
     async def search(self, query: str, k: int = 5) -> List[SearchResult]:
         query_embedding = self.embedding_provider.embed_text(query)
@@ -107,97 +112,9 @@ class ChromaVectorStore(VectorStore):
             return []
 
 
-class FAISSVectorStore(VectorStore):
-    def __init__(self, index_path: str = "faiss_index"):
-        self.index_path = index_path
-        self.embedding_provider = get_embedding_provider()
-        self.documents = []
-        self.metadatas = []
-
-        # Try to load existing index
-        if os.path.exists(f"{index_path}.index") and os.path.exists(f"{index_path}_metadata.pkl"):
-            self.index = faiss.read_index(f"{index_path}.index")
-            with open(f"{index_path}_metadata.pkl", "rb") as f:
-                data = pickle.load(f)
-                self.documents = data["documents"]
-                self.metadatas = data["metadatas"]
-        else:
-            self.index = None
-
-    async def add_documents(self, texts: List[str], metadatas: List[Dict[str, Any]], ids: List[str]):
-        embeddings = np.array(self.embedding_provider.embed_documents(texts)).astype('float32')
-
-        if self.index is None:
-            dimension = embeddings.shape[1]
-            self.index = faiss.IndexFlatIP(dimension)  # Inner product for cosine similarity
-
-        # Normalize embeddings for cosine similarity
-        faiss.normalize_L2(embeddings)
-        self.index.add(embeddings)
-
-        self.documents.extend(texts)
-        self.metadatas.extend(metadatas)
-
-        # Save to disk
-        faiss.write_index(self.index, f"{self.index_path}.index")
-        with open(f"{self.index_path}_metadata.pkl", "wb") as f:
-            pickle.dump({
-                "documents": self.documents,
-                "metadatas": self.metadatas
-            }, f)
-
-    async def search(self, query: str, k: int = 5) -> List[SearchResult]:
-        if self.index is None or len(self.documents) == 0:
-            return []
-
-        query_embedding = np.array([self.embedding_provider.embed_text(query)]).astype('float32')
-        faiss.normalize_L2(query_embedding)
-
-        scores, indices = self.index.search(query_embedding, min(k, len(self.documents)))
-
-        search_results = []
-        for i, (score, idx) in enumerate(zip(scores[0], indices[0])):
-            if idx != -1:  # Valid index
-                search_results.append(SearchResult(
-                    content=self.documents[idx],
-                    metadata=self.metadatas[idx],
-                    score=float(score)
-                ))
-
-        return search_results
-
-    async def clear(self):
-        if os.path.exists(f"{self.index_path}.index"):
-            os.remove(f"{self.index_path}.index")
-        if os.path.exists(f"{self.index_path}_metadata.pkl"):
-            os.remove(f"{self.index_path}_metadata.pkl")
-
-        self.index = None
-        self.documents = []
-        self.metadatas = []
-
-    async def list_documents(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
-        documents = []
-        total_docs = len(self.documents)
-
-        if total_docs == 0:
-            return documents
-
-        end_idx = min(limit, total_docs) if limit else total_docs
-
-        for i in range(end_idx):
-            documents.append({
-                'id': f"faiss_{i}",
-                'content': self.documents[i],
-                'metadata': self.metadatas[i],
-                'content_preview': self.documents[i][:200] + "..." if len(self.documents[i]) > 200 else self.documents[i]
-            })
-
-        return documents
-
 
 def get_vector_store() -> VectorStore:
     if settings.vector_db == "chroma":
         return ChromaVectorStore()
     else:
-        return FAISSVectorStore()
+        raise RuntimeError("vector db init error")

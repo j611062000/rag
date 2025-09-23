@@ -69,11 +69,22 @@ Provide your answer based solely on the retrieved information:
         # Extract source information
         sources = self._extract_sources(search_results)
 
+        # Calculate confidence using only relevant results (above threshold)
+        min_relevance_threshold = 0.4
+        relevant_results = [r for r in search_results if r.score >= min_relevance_threshold]
+
+        if relevant_results:
+            confidence = min(0.9, sum(r.score for r in relevant_results) / len(relevant_results))
+        else:
+            # Fallback to original calculation if no results meet threshold
+            confidence = min(0.9, sum(r.score for r in search_results) / len(search_results))
+
         return AgentResponse(
             content=response.content,
             metadata={
                 "sources": sources,
                 "retrieved_chunks": len(search_results),
+                "relevant_chunks": len(relevant_results),
                 "search_results": [
                     {
                         "content": result.content[:200] + "...",
@@ -82,7 +93,7 @@ Provide your answer based solely on the retrieved information:
                     } for result in search_results
                 ]
             },
-            confidence=min(0.9, sum(r.score for r in search_results) / len(search_results))
+            confidence=confidence
         )
 
     def _format_search_results(self, search_results: List[SearchResult]) -> str:
