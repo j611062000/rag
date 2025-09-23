@@ -18,7 +18,7 @@ graph TB
         Clarifier[🔍 Clarification Agent<br/>Context combination & validation]
         Router[🧭 Routing Agent<br/>PDF vs Web decision]
         PDFAgent[📄 Advanced PDF Agent<br/>LlamaIndex Query Pipeline]
-        WebAgent[🌐 Web Search Agent<br/>Tavily/DuckDuckGo integration]
+        WebAgent[🌐 Web Search Agent<br/>Tavily]
         Synthesizer[⚡ Answer Synthesizer<br/>Result combination & grounding]
     end
 
@@ -107,9 +107,7 @@ graph TB
 git clone <repository-url>
 cd chat-with-pdf
 ```
-
 2. **Start with Make**
-
 ```bash
 # Build and start all services
 make start
@@ -118,17 +116,10 @@ make start
 make stop
 ```
 
-This starts:
-- **Backend API** (Port 8000) - FastAPI service with all agents
-- **ChromaDB** (Port 8001) - Vector database for document storage
-- **Redis** (Port 6379) - Session memory and caching
-
-3. **Verify Installation**
-
-
-Access interactive API docs:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+3. **You can access below after start**
+   - 🌐 Web UI:          http://localhost:3000
+   - 🔌 API:             http://localhost:8000
+   - Swagger UI: http://localhost:8000/docs
 
 ### API Endpoints
 
